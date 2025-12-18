@@ -4,7 +4,7 @@ use ieee.numeric_std.all;
 
 entity uart_tx is
     generic (
-        g_CLKS_PER_BIT : integer := 50
+        g_CLKS_PER_BIT : integer := 434
     );
     port (
         i_Clk       : in  std_logic;

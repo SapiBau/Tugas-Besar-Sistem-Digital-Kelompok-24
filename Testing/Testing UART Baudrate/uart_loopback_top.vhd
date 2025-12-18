@@ -13,7 +13,7 @@ end uart_loopback_top;
 architecture rtl of uart_loopback_top is
 
     -- 50,000,000 / 1,000,000 = 50
-    constant c_CLKS_PER_BIT : integer := 434;
+    constant c_CLKS_PER_BIT : integer := 5208;
 
     signal w_Rx_DV     : std_logic;
     signal w_Rx_Byte   : std_logic_vector(7 downto 0);

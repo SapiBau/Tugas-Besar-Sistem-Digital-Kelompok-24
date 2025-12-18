@@ -9,7 +9,7 @@ import scipy.io.wavfile
 # WINDOWS: 'COM3', 'COM4', etc.
 # LINUX/MAC: '/dev/ttyUSB0', etc.
 SERIAL_PORT = 'COM7'   
-BAUD_RATE   = 115200   
+BAUD_RATE   = 9600   
 
 # Audio Configuration
 DURATION    = 3.0      # Seconds of audio to test
@@ -55,7 +55,7 @@ def test_audio_loopback():
             start_time = time.time()
             
             # Send in small chunks to prevent overflowing the buffer
-            chunk_size = 64 
+            chunk_size = 32 
             total_sent = 0
             
             while total_sent < len(audio_data):
@@ -72,6 +72,8 @@ def test_audio_loopback():
                 if rx_chunk:
                     received_data.extend(rx_chunk)
                     total_sent += len(chunk)
+                else:
+                    print("Failed")
                 
                 # Simple progress bar
                 percent = (total_sent / len(audio_data)) * 100
