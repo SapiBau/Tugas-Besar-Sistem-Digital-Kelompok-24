@@ -5,7 +5,7 @@ import random
 # CONFIGURATION
 # Windows uses 'COMx', Linux/Mac uses '/dev/ttyUSBx'
 SERIAL_PORT = 'COM7'  
-BAUD_RATE = 9600
+BAUD_RATE = 115200
 
 def test_uart_loopback():
     try:

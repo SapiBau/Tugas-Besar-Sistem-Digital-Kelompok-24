@@ -1,117 +1,91 @@
 import serial
 import time
-import numpy as np
-import scipy.io.wavfile
+import os
+import sys
 
-# ==========================================
-# CONFIGURATION
-# ==========================================
-# WINDOWS: 'COM3', 'COM4', etc.
-# LINUX/MAC: '/dev/ttyUSB0', etc.
-SERIAL_PORT = 'COM7'   
-BAUD_RATE   = 9600   
+# ================= CONFIGURATION =================
+# CHECK THESE SETTINGS BEFORE RUNNING!
+SERIAL_PORT = 'COM7'       # Windows: 'COMx', Mac/Linux: '/dev/ttyUSB0'
+BAUD_RATE   = 115200       # Must match your FPGA c_CLKS_PER_BIT setting
+INPUT_FILE  = '1_source_audio.wav'  # The song you want to send
+OUTPUT_FILE = 'output_from_fpga.wav' # The file to save
+CHUNK_SIZE  = 64           # Bytes to send at a time (Must be < FPGA FIFO depth)
+# =================================================
 
-# Audio Configuration
-DURATION    = 3.0      # Seconds of audio to test
-FREQ        = 440.0    # Hz (A4 Note - The standard "Beep")
+def run_audio_loopback():
+    # 1. Check if input file exists
+    if not os.path.exists(INPUT_FILE):
+        print(f"Error: '{INPUT_FILE}' not found. Please place a .wav file in this folder.")
+        return
 
-# CRITICAL CALCULATION:
-# UART sends 1 Start bit + 8 Data bits + 1 Stop bit = 10 bits per byte.
-# Max Bytes per Second = Baud / 10
-SAMPLE_RATE = int(BAUD_RATE / 10) 
-
-def test_audio_loopback():
-    print(f"--- UART AUDIO LOOPBACK TEST ---")
-    print(f"Target Baud Rate: {BAUD_RATE}")
-    print(f"Max Sample Rate:  {SAMPLE_RATE} Hz (Telephone Quality)")
-    
-    # -------------------------------------------------
-    # 1. Generate the "beep" (Sine Wave)
-    # -------------------------------------------------
-    print("Generating audio data...")
-    t = np.linspace(0, DURATION, int(SAMPLE_RATE * DURATION), endpoint=False)
-    
-    # Create sine wave, scale to 0-255 (Unsigned 8-bit audio)
-    raw_signal = 127 + 127 * np.sin(2 * np.pi * FREQ * t)
-    audio_data = raw_signal.astype(np.uint8)
-    
-    # Save what we are ABOUT to send (for comparison)
-    scipy.io.wavfile.write("1_source_audio.wav", SAMPLE_RATE, audio_data)
-    
-    received_data = bytearray()
-    
-    # -------------------------------------------------
-    # 2. Open Serial Port and Loopback
-    # -------------------------------------------------
     try:
-        with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=2) as ser:
-            print(f"Connected to {SERIAL_PORT}. Stabilizing line...")
-            time.sleep(2) # Wait for USB-UART chip to reset
-            
-            ser.reset_input_buffer()
-            ser.reset_output_buffer()
-            
-            print(f"Sending {len(audio_data)} bytes...")
-            start_time = time.time()
-            
-            # Send in small chunks to prevent overflowing the buffer
-            chunk_size = 32 
-            total_sent = 0
-            
-            while total_sent < len(audio_data):
-                # Slice the data
-                chunk = audio_data[total_sent : total_sent + chunk_size]
-                
-                # Write to FPGA
-                ser.write(chunk.tobytes())
-                
-                # Read back immediately (Loopback)
-                # We expect to get back exactly what we sent
-                rx_chunk = ser.read(len(chunk))
+        # 2. Open Serial Port
+        ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=2)
+        print(f"Connected to {SERIAL_PORT} at {BAUD_RATE} baud.")
+        
+        # Clear any garbage currently in the buffer
+        ser.reset_input_buffer()
+        ser.reset_output_buffer()
 
-                if rx_chunk:
-                    received_data.extend(rx_chunk)
-                    total_sent += len(chunk)
-                else:
-                    print("Failed")
-                
-                # Simple progress bar
-                percent = (total_sent / len(audio_data)) * 100
-                print(f"\rProgress: {percent:.1f}%", end="")
+        file_size = os.path.getsize(INPUT_FILE)
+        bytes_processed = 0
+        start_time = time.time()
 
-            duration = time.time() - start_time
-            print(f"\nDone in {duration:.2f} seconds.")
+        print(f"Starting transfer of {INPUT_FILE} ({file_size} bytes)...")
+        print("Sending data to FPGA and recording echo...")
 
-            # -------------------------------------------------
-            # 3. Analyze Results
-            # -------------------------------------------------
-            rx_array = np.frombuffer(received_data, dtype=np.uint8)
-            
-            # Save the received file
-            scipy.io.wavfile.write("2_received_from_fpga.wav", SAMPLE_RATE, rx_array)
-            
-            print("-" * 30)
-            print(f"Sent Bytes:     {len(audio_data)}")
-            print(f"Received Bytes: {len(received_data)}")
-            
-            if len(audio_data) == len(received_data):
-                # Check for bit errors
-                errors = np.sum(audio_data != rx_array)
-                if errors == 0:
-                    print("SUCCESS: Perfect match! 0 bit errors.")
-                else:
-                    print(f"WARNING: Size matched, but {errors} bytes were corrupted.")
-            else:
-                print("FAILURE: Data lost. (Did you update the FPGA clock divisor?)")
+        # 3. Open Files
+        with open(INPUT_FILE, 'rb') as f_in, open(OUTPUT_FILE, 'wb') as f_out:
+            while True:
+                # Read a chunk from the original file
+                data_chunk = f_in.read(CHUNK_SIZE)
                 
-            print("-" * 30)
-            print("Check your folder for '2_received_from_fpga.wav' to listen.")
+                if not data_chunk:
+                    break # End of file
+
+                # SEND: Write chunk to FPGA
+                ser.write(data_chunk)
+                
+                # RECEIVE: Read exact amount of bytes back
+                # This ensures we don't overrun the FPGA buffer
+                rx_chunk = ser.read(len(data_chunk))
+                
+                if len(rx_chunk) != len(data_chunk):
+                    print(f"\nError: Data loss detected! Sent {len(data_chunk)} bytes, received {len(rx_chunk)}.")
+                    print("Check your baud rate or connections.")
+                    break
+
+                # Write received data to new file
+                f_out.write(rx_chunk)
+                
+                # Progress Bar Logic
+                bytes_processed += len(data_chunk)
+                if bytes_processed % 1024 == 0: # Update every 1KB
+                    percent = (bytes_processed / file_size) * 100
+                    sys.stdout.write(f"\rProgress: {percent:.1f}% ({bytes_processed}/{file_size} bytes)")
+                    sys.stdout.flush()
+
+        total_time = time.time() - start_time
+        print(f"\n\nDone!")
+        print(f"Time elapsed: {total_time:.2f} seconds")
+        print(f"Average Speed: {file_size/total_time:.2f} bytes/sec")
+        print(f"Saved received audio to: {OUTPUT_FILE}")
+        
+        ser.close()
+        
+        # 4. Verification
+        print("\n--- Verification ---")
+        if os.path.getsize(OUTPUT_FILE) == file_size:
+            print("SUCCESS: Output file size matches input file size.")
+            print("Try playing 'output_from_fpga.wav' to hear the audio!")
+        else:
+            print("WARNING: File sizes do not match. Some data was lost.")
 
     except serial.SerialException as e:
-        print(f"\nError opening port: {e}")
-        print("Check: Is the port correct? Is another app using it?")
+        print(f"Serial Error: {e}")
+        print("Is the device connected? Is the COM port correct?")
     except Exception as e:
-        print(f"\nAn error occurred: {e}")
+        print(f"An unexpected error occurred: {e}")
 
 if __name__ == "__main__":
-    test_audio_loopback()
+    run_audio_loopback()
