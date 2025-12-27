@@ -5,7 +5,7 @@ use IEEE.NUMERIC_STD.ALL;
 entity cascaded_iir_lpf is
     Generic (
         STAGES       : integer := 2;   -- Number of cascaded filters (poles)
-        SHIFT_FACTOR : integer := 4;   -- Cutoff control: 2^4 = 16 (Higher = Slower/Smoother)
+        SHIFT_FACTOR : integer := 0;   -- Cutoff control: 2^4 = 16 (Higher = Slower/Smoother)
         DATA_WIDTH   : integer := 32   -- Internal calculation width
     );
     Port (
@@ -20,7 +20,7 @@ architecture Behavioral of cascaded_iir_lpf is
 
     -- Define an array type to hold the 'y' (accumulator) for each stage
     type filter_array_t is array (0 to STAGES) of signed(DATA_WIDTH-1 downto 0);
-    signal filter_stages : filter_array_t;
+    signal filter_stages : filter_array_t := (others => (others => '0'));
 
 begin
 
@@ -53,6 +53,6 @@ begin
     -- Take the output of the final stage.
     -- Since we have 32-bit precision but only want 8-bit output,
     -- we take the Most Significant Bits (MSBs) to preserve the range.
-    data_out <= std_logic_vector(filter_stages(STAGES)(31 downto 24));
+    data_out <= std_logic_vector( (not filter_stages(STAGES)(15)) & filter_stages(STAGES)(14 downto 8) );
 
 end Behavioral;

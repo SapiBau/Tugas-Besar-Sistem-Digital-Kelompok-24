@@ -1,31 +1,38 @@
-library IEEE;
-use IEEE.STD_LOGIC_1164.ALL;
-use IEEE.NUMERIC_STD.ALL;
-
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 entity phase_detector is
-    Port (
-        clk         : in  STD_LOGIC;
-        rst_n       : in  STD_LOGIC;
-        en          : in  STD_LOGIC; -- Sinyal Enable dari FSM
-        fm_in       : in  SIGNED(7 downto 0); -- Input dari FIFO
-        nco_fb      : in  SIGNED(7 downto 0); -- Feedback dari NCO
-        error_out   : out SIGNED(15 downto 0) -- Output 16-bit
+    port (
+        clk      : in  std_logic;
+        rst      : in  std_logic;
+        enable   : in  std_logic;
+        
+        data_in  : in  std_logic_vector(7 downto 0); 
+        nco_in   : in  std_logic_vector(7 downto 0);
+
+        pd_out   : out std_logic_vector(15 downto 0)
     );
 end phase_detector;
 
-
-architecture Behavioral of phase_detector is
+architecture rtl of phase_detector is
+    signal input_signed : signed(7 downto 0);
+    signal nco_signed   : signed(7 downto 0);
+    signal mult_result  : signed(15 downto 0);
 begin
-    process(clk, rst_n)
+    input_signed <= signed(unsigned(data_in) - 128);
+    nco_signed   <= signed(unsigned(nco_in) - 128);
+
+    process(clk)
     begin
-        if rst_n = '0' then
-            error_out <= (others => '0');
-        elsif rising_edge(clk) then
-            if en = '1' then
-                -- Perkalian: 8-bit * 8-bit = 16-bit
-                error_out <= fm_in * nco_fb;
+        if rising_edge(clk) then
+            if rst = '1' then
+                mult_result <= (others => '0');
+            elsif enable = '1' then
+                mult_result <= input_signed * nco_signed;
             end if;
         end if;
     end process;
-end Behavioral;
+
+    pd_out <= std_logic_vector(mult_result);
+end rtl;

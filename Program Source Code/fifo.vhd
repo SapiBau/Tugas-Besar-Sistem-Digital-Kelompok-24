@@ -40,6 +40,8 @@ begin
                 r_Wr_Index <= 0;
                 r_Rd_Index <= 0;
                 r_Count    <= 0;
+
+                o_Rd_Data  <= (others => '0');
             else
                 -- Write Logic
                 if (i_Wr_En = '1' and r_Count < g_DEPTH) then

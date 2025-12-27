@@ -1,40 +1,37 @@
-library IEEE;
-use IEEE.STD_LOGIC_1164.ALL;
-use IEEE.NUMERIC_STD.ALL;
-
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 entity loop_filter is
-    Port (
-        clk      : in  STD_LOGIC;
-        rst_n    : in  STD_LOGIC;
-        acc_en   : in  STD_LOGIC;
-        out_en   : in  STD_LOGIC;
-        error_in : in  SIGNED(15 downto 0);
-        audio_out: out SIGNED(31 downto 0)
+    port (
+        clk      : in  std_logic;
+        rst      : in  std_logic;
+        enable   : in  std_logic;
+        pd_in    : in  std_logic_vector(15 downto 0);
+        lf_out   : out std_logic_vector(31 downto 0)
     );
 end loop_filter;
 
-
-architecture Behavioral of loop_filter is
-    signal accumulator : SIGNED(31 downto 0);
+architecture rtl of loop_filter is
+    signal pd_signed     : signed(15 downto 0);
+    signal integrator    : signed(31 downto 0) := (others => '0');
+    signal output_signal : signed(31 downto 0) := (others => '0');
 begin
-    process(clk, rst_n)
+    pd_signed <= signed(pd_in);
+
+    process(clk)
     begin
-        if rst_n = '0' then
-            accumulator <= (others => '0');
-            audio_out <= (others => '0');
-        elsif rising_edge(clk) then
-            -- Jalur Integral (Update Akumulator)
-            if acc_en = '1' then
-                -- Geser 6 bit (bagi 64) sebagai Gain Ki
-                accumulator <= accumulator + resize(shift_right(error_in, 6), 32);
-            end if;
-           
-            -- Jalur Output (P + I)
-            if out_en = '1' then
-                -- Geser 2 bit (bagi 4) sebagai Gain Kp
-                audio_out <= accumulator + resize(shift_right(error_in, 2), 32);
+        if rising_edge(clk) then
+            if rst = '1' then
+                integrator <= (others => '0');
+                output_signal <= (others => '0');
+            elsif enable = '1' then
+                -- HIGH GAIN: Resize FIRST, then Multiply by 1024 (Shift 10)
+                integrator    <= integrator + shift_left(resize(pd_signed, 32), 10);
+                output_signal <= shift_left(resize(pd_signed, 32), 10) + integrator;
             end if;
         end if;
     end process;
-end Behavioral;
+
+    lf_out <= std_logic_vector(output_signal);
+end rtl;

@@ -6,6 +6,7 @@ entity nco is
     port (
         clk : in std_logic;
         reset : in std_logic;
+        enable   : in std_logic;
         phase_in : in std_logic_vector(31 downto 0);
         sine_out : out std_logic_vector(7 downto 0)
     );
@@ -63,7 +64,7 @@ begin
         if rising_edge(clk) then
             if reset = '1' then
                 phase_acc <= (others => '0');
-            else
+            elsif enable = '1' then
                 phase_acc <= phase_acc + unsigned(phase_in);
             end if;
         end if;

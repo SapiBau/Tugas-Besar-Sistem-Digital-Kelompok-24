@@ -6,10 +6,10 @@ import sys
 # ================= CONFIGURATION =================
 # CHECK THESE SETTINGS BEFORE RUNNING!
 SERIAL_PORT = 'COM7'       # Windows: 'COMx', Mac/Linux: '/dev/ttyUSB0'
-BAUD_RATE   = 115200       # Must match your FPGA c_CLKS_PER_BIT setting
-INPUT_FILE  = '1_source_audio.wav'  # The song you want to send
+BAUD_RATE   = 2000000       # Must match your FPGA c_CLKS_PER_BIT setting
+INPUT_FILE  = 'input.wav'  # The song you want to send
 OUTPUT_FILE = 'output_from_fpga.wav' # The file to save
-CHUNK_SIZE  = 64           # Bytes to send at a time (Must be < FPGA FIFO depth)
+CHUNK_SIZE  = 32           # Bytes to send at a time (Must be < FPGA FIFO depth)
 # =================================================
 
 def run_audio_loopback():
