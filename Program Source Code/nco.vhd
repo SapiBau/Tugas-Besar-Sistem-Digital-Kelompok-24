@@ -54,7 +54,8 @@ architecture Behavioral of nco is
         x"25", x"28", x"2A", x"2C", x"2F", x"31", x"34", x"36",
         x"39", x"3B", x"3E", x"41", x"43", x"46", x"49", x"4C",
         x"4F", x"52", x"55", x"58", x"5A", x"5D", x"61", x"64",
-        x"67", x"6A", x"6D", x"70", x"73", x"76", x"79", x"7C"
+        x"67", x"6A", x"6D", x"70", x"73", x"76", x"79", x"7C",
+        others => x"80"
     );
 
 begin
