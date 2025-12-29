@@ -3,12 +3,6 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
 entity fm_demodulator_top is
-    Generic (
-        -- TAMBAHAN BARU: Parameter Tuning
-        -- Nilai default ini sembarang, nanti kita override di Top Level
-        CW0_VAL_OVERRIDE : integer := 4294967; 
-        FILTER_SHIFT     : integer := 12
-    );
     Port (
         clk        : in  std_logic;
         rst        : in  std_logic;
@@ -22,7 +16,7 @@ entity fm_demodulator_top is
         
         -- Debug Ports
         dbg_pd_out   : out std_logic_vector(15 downto 0); 
-        dbg_lf_out   : out std_logic_vector(31 downto 0); 
+        dbg_lf_out   : out std_logic_vector(23 downto 0); 
         dbg_nco_out  : out std_logic_vector(7 downto 0)   
     );
 end fm_demodulator_top;
@@ -32,13 +26,12 @@ architecture Structural of fm_demodulator_top is
     -- Sinyal Internal
     signal pd_result     : std_logic_vector(15 downto 0);
     signal pd_result_sgn : signed(15 downto 0);
-    signal lf_cw_out     : signed(31 downto 0);
+    signal lf_cw_out     : signed(23 downto 0);
     signal lf_sat_flag   : std_logic;
     signal lf_err_smooth : signed(15 downto 0);
     signal nco_phase_in  : std_logic_vector(31 downto 0);
     signal nco_sine_out  : std_logic_vector(7 downto 0);
-	
-    signal audio_raw_32  : signed(31 downto 0);
+	 
 	signal audio_centered : signed(23 downto 0);
 
 begin
@@ -53,10 +46,7 @@ begin
 
     -- 2. Loop Filter
     LF_INST: entity work.loop_filter
-        generic map (
-            CW0_VAL   => CW0_VAL_OVERRIDE, -- Gunakan nilai dari Generic
-            SHIFT_AMT => 0 -- Gain Loop Filter (Biarkan 12 dulu)
-        )
+        generic map (CW0_VAL => 4294967, SHIFT_AMT =>12)
         port map (
             clk => clk, rst => rst, en => enable,
             kp_in => kp_config, ki_in => ki_config, error_raw => pd_result_sgn,
@@ -64,20 +54,20 @@ begin
         );
 
     -- 3. NCO
-    nco_phase_in <= std_logic_vector(lf_cw_out);
+    nco_phase_in <= std_logic_vector(resize(unsigned(lf_cw_out), 32));
     NCO_INST: entity work.nco
         port map (
             clk => clk, reset => rst, enable => enable,
             phase_in => nco_phase_in, sine_out => nco_sine_out
         );
-    audio_raw_32 <= lf_cw_out - to_signed(CW0_VAL_OVERRIDE, 32);
-	audio_centered <= resize(shift_right(audio_raw_32, 18), 24);
+
+		  audio_centered <= signed(lf_cw_out) - to_signed(4294967, 24);
 		  
     -- 4. AUDIO PROCESSOR (Carrier Removal + LPF) - MODUL BARU
     AUDIO_PROC_INST: entity work.low_pass_filter
         generic map (
-            STAGES     => 3, 
-            SHIFT_FACTOR    => FILTER_SHIFT, 
+            STAGES     => 2, 
+            SHIFT_FACTOR    => 4, 
             DATA_WIDTH   => 24,
 			OUTPUT_WIDTH => 8
         )
@@ -85,7 +75,7 @@ begin
             clk       => clk,
             rst       => rst,
             en        => enable,
-            data_in   => audio_centered, -- Input langsung 24-bit Signed
+            data_in     => audio_centered, -- Input langsung 24-bit Signed
             data_out => audio_out  -- Output langsung 8-bit
         );
 

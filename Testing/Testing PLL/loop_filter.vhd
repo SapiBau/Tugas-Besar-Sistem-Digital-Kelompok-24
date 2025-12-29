@@ -24,7 +24,7 @@ entity loop_filter is
         
         error_raw    : in  signed(15 downto 0); -- Input dari Phase Detector
         
-        cw_out       : out signed(31 downto 0); -- Output Tuning Word untuk NCO
+        cw_out       : out signed(23 downto 0); -- Output Tuning Word untuk NCO
         sat_flag     : out std_logic;           -- Indikator Saturasi
         error_smooth : out signed(15 downto 0)  -- Sinyal Error setelah FIR
     );
@@ -71,7 +71,7 @@ begin
                 -- Reset Values
                 taps           <= (others => (others => '0'));
                 integrator_acc <= (others => '0');
-                cw_out         <= to_signed(CW0_VAL, 32);
+                cw_out         <= to_signed(CW0_VAL, 24);
                 sat_flag       <= '0';
                 err_filt_sig   <= (others => '0');
                 kp_reg         <= (others => '0');
@@ -87,22 +87,23 @@ begin
                 -- TAHAP 1: FIR FILTER
                 -- ========================================================
                 -- Geser shift register
-                for i in 7 downto 1 loop 
-                    taps(i) <= taps(i-1);
-                end loop;
-                taps(0) <= error_raw;
+                --for i in 7 downto 1 loop 
+                --    taps(i) <= taps(i-1);
+                --end loop;
+                --taps(0) <= error_raw;
                 
                 -- Hitung Konvolusi (Weighted Sum)
-                fir_sum := 0;
-                for i in 0 to 7 loop
-                    fir_sum := fir_sum + (to_integer(taps(i)) * FIR_COEFF(i));
-                end loop;
+                --fir_sum := 0;
+                --for i in 0 to 7 loop
+                --    fir_sum := fir_sum + (to_integer(taps(i)) * FIR_COEFF(i));
+                --end loop;
                 
                 -- Normalisasi (Dibagi total bobot 20)
-                err_filt := fir_sum / 20;
-                err_filt_sig <= to_signed(err_filt, 16);
+                --err_filt := fir_sum / 20;
+                --err_filt_sig <= to_signed(err_filt, 16);
 
-                
+                err_filt := to_integer(error_raw);
+                err_filt_sig <= error_raw;
 
                 -- ========================================================
                 -- TAHAP 2: INTEGRATOR (I)
@@ -140,7 +141,7 @@ begin
                 cw_corr := shift_right(combined, SHIFT_AMT);
 
                 -- Output = Frekuensi Dasar (50kHz) + Koreksi PI
-                cw_out <= to_signed(CW0_VAL, 32) + cw_corr;
+                cw_out <= to_signed(CW0_VAL, 24) + resize(cw_corr, 24);
                 
             end if;
         end if;
