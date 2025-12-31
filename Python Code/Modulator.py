@@ -4,7 +4,7 @@ import scipy.signal as signal
 import os
 
 # === KONFIGURASI ===
-INPUT_FILE   = 'input.wav'              # File lagu/suara asli
+INPUT_FILE   = 'Prague.wav'              # File lagu/suara asli
 OUTPUT_FM    = 'fm_modulated_signal.wav'# File output berisi sinyal FM
 FPGA_RATE    = 200000                   # Sample rate sistem (200 kSps)
 CARRIER_FREQ = 50000                    # 50 kHz

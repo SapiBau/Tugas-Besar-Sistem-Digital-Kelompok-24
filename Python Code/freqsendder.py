@@ -12,7 +12,7 @@ DURATION     = 0.05        # Durasi 50ms
 CARRIER_FREQ = 50000       
 DEV_FREQ     = 5000        
 MSG_FREQ     = 440         
-SAMPLE_RATE  = 200000      
+SAMPLE_RATE  = 200000   
 
 def generate_fm_signal():
     """

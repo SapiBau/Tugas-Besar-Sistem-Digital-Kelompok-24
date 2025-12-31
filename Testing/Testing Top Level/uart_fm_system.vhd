@@ -7,7 +7,12 @@ entity uart_fm_system is
         clk      : in  std_logic; -- System Clock (50 MHz)
         rst_n    : in  std_logic; -- RESET ACTIVE LOW (Tekan = 0, Lepas = 1)
         uart_rx  : in  std_logic; -- Serial Input
-        uart_tx  : out std_logic  -- Serial Output
+        uart_tx  : out std_logic;  -- Serial Output
+
+        dbg_pd_out  : out std_logic_vector(15 downto 0);
+        dbg_lf_out  : out std_logic_vector(31 downto 0);
+        dbg_nco_out : out std_logic_vector(7 downto 0);
+        dbg_audio_out : out std_logic_vector(7 downto 0)
     );
 end uart_fm_system;
 
@@ -147,8 +152,13 @@ begin
         kp_config  => KP_VAL,
         ki_config  => KI_VAL,
         data_in    => fifo_rx_dout,
-        audio_out  => demod_out
+        audio_out  => demod_out,
+        dbg_pd_out => dbg_pd_out, 
+        dbg_lf_out => dbg_lf_out, 
+        dbg_nco_out => dbg_nco_out
     );
+
+    dbg_audio_out <= demod_out;
 
     -- ========================================================
     -- 6. FIFO TX (Output Buffer)

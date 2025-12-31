@@ -17,7 +17,7 @@ architecture Behavioral of tb_uart_fm_system is
     constant BIT_PERIOD   : time    := 500 ns; -- 1/2.000.000 detik
     
     -- Konfigurasi Sinyal (Sama dengan Python)
-    constant F_MSG        : real := 440.0;   -- Audio 440 Hz
+    constant F_MSG        : real := 14080.0;   -- Audio 440 Hz
     constant F_CARRIER    : real := 50000.0; -- Carrier 50 kHz
     constant F_DEV        : real := 5000.0;  -- Deviasi 5 kHz
     constant SAMPLE_RATE  : real := 200000.0;-- 200 kSps
@@ -35,12 +35,15 @@ architecture Behavioral of tb_uart_fm_system is
     signal tb_dbg_pd  : std_logic_vector(15 downto 0);
     signal tb_dbg_lf  : std_logic_vector(31 downto 0);
     signal tb_dbg_nco : std_logic_vector(7 downto 0);
-
+    signal dbg_audio_out : std_logic_vector(7 downto 0);
+    
     signal probe_msg_audio : signed(15 downto 0) := (others => '0');
 
     signal probe_pd      : signed(15 downto 0);
     signal probe_lf      : signed(31 downto 0);
     signal probe_nco     : signed(7 downto 0);
+
+     
 
 begin
 
@@ -56,7 +59,8 @@ begin
 
             dbg_pd_out  => tb_dbg_pd,
             dbg_lf_out  => tb_dbg_lf,
-            dbg_nco_out => tb_dbg_nco
+            dbg_nco_out => tb_dbg_nco,
+            dbg_audio_out => dbg_audio_out
         );
 
     probe_pd  <= signed(tb_dbg_pd);
